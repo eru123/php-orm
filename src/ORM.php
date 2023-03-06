@@ -92,7 +92,7 @@ class ORM
     public function pdo()
     {
         if (!is_array($this->pdo) && !($this->pdo instanceof PDO)) {
-            $this->pdo = new PDO(...$this->pdo);
+            $this->pdo = new PDO(...(array) $this->pdo);
         }
 
         if (!($this->pdo instanceof PDO)) {
