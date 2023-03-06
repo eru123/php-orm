@@ -9,17 +9,17 @@ class Model
     /**
      * @var ORM
      */
-    protected $orm;
+    protected $orm = null;
 
     /**
      * @var string
      */
-    protected $table;
+    protected $table = null;
 
     /**
      * @var ?string
      */
-    protected $primaryKey;
+    protected $primary_key = null;
 
     /**
      * @var array
@@ -196,7 +196,7 @@ class Model
     {
         $fields = [];
         foreach ($this->fields as $name => $field) {
-            $type = static::type($field['type'], $field['length']);
+            $type = static::type($field['type'], @$field['length']);
             $sql = static::raw("`{$name}` {$type}");
 
             if (isset($field['default'])) {
@@ -207,15 +207,15 @@ class Model
                 $sql .= ' NOT NULL';
             }
 
-            if ($this->primaryKey === $name) {
+            if ($this->primary_key === $name) {
                 $sql .= ' AUTO_INCREMENT';
             }
 
             $fields[] = $sql;
         }
 
-        if ($this->primaryKey) {
-            $fields[] = static::raw('PRIMARY KEY (`' . $this->primaryKey . '`)');
+        if ($this->primary_key) {
+            $fields[] = static::raw('PRIMARY KEY (`' . $this->primary_key . '`)');
         }
 
         foreach ($this->indexes as $index) {
@@ -258,7 +258,7 @@ class Model
     {
         $intended_fields = $this->fields;
         $intended_indexes = $this->indexes;
-        $intended_primary_key = $this->primaryKey;
+        $intended_primary_key = $this->primary_key;
 
         $parse_result = [];
 
@@ -376,4 +376,73 @@ class Model
         $alter = implode(', ', $alter);
         return static::raw("ALTER TABLE {$this->table} {$alter}");
     }
+
+    /**
+     * Migrate Table
+     * @return static
+     */
+    public function migrate()
+    {
+        $create = false;
+        $alter = true;
+
+        try {
+            $sql = $this->sqlDescribeQuery();
+            $description_raw = $this->orm()->exec($sql)->stmt->fetchAll();
+            $create = false;
+        } catch (Exception $e) {
+            $alter = false;
+            if ($e->getCode() === '42S02') {
+                $create = true;
+            } else {
+                new Exception($e->getMessage(), $e->getCode(), $e);
+            }
+        }
+
+        if ($create) {
+            $sql = $this->sqlCreateQuery();
+            $this->orm()->exec($sql);
+
+            try {
+                $sql = $this->sqlDescribeQuery();
+                $this->orm()->exec($sql)->stmt->fetchAll();
+            } catch (Exception $e) {
+                if ($e->getCode() === '42S02') {
+                    new Exception("Table {$this->table} was not created", 500, $e);
+                } else {
+                    new Exception($e->getMessage(), $e->getCode(), $e);
+                }
+            }
+        }
+
+        if ($alter && !empty($description_raw)) {
+            // TODO: Alter Table
+        }
+
+        return $this;
+    }
+
+    /**
+     * Drop Table
+     * @return static
+     */
+    public function drop()
+    {
+        try {
+            $sql = $this->sqlDropQuery();
+            $this->orm()->exec($sql);
+
+            $sql = $this->sqlDescribeQuery();
+            $this->orm()->exec($sql)->stmt->fetchAll();
+        } catch (Exception $e) {
+            if ($e->getCode() !== '42S02') {
+                new Exception($e->getMessage(), $e->getCode(), $e);
+            }
+        }
+
+        return $this;
+    }
 }
+
+
+global $refere;
