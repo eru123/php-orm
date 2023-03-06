@@ -1,11 +1,13 @@
 # php-orm
-MySQL ORM for PHP, Ideal for simple queries and migrations
+Simple MySQL based ORM for PHP
 
 # Features
  - Forward-only automatic migrations
+ - Use Table Model as Migration
  - Straightforward and simple
  - No dependencies
  - No configuration
+ - No relationships
 
 # Supports
  - PHP ^8.0
