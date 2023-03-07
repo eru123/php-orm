@@ -22,6 +22,8 @@ trait Update
         $this->set = $this->beforeUpdate($this->set);
         $sql = $this->sqlUpdateQuery($this->set);
         $query = $this->orm()->exec($sql);
+        $this->set = [];
+        $this->where = [];
         $this->afterUpdate($this->set, $query);
         return $query->stmt->rowCount();
     }
