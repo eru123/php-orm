@@ -34,7 +34,7 @@ class ORM
         return $this;
     }
 
-    private function debug_info($msg, $color = 'white')
+    public function debug_info($msg, $color = 'white')
     {
         if ($this->debug) {
             $this->debug_stack[] = [
@@ -43,7 +43,7 @@ class ORM
             ];
         }
 
-        if (php_sapi_name() == 'cli' && is_string($msg) && !empty($msg)) {
+        if (php_sapi_name() == 'cli' && !empty($msg)) {
             $colors = [
                 'black' => '0;30',
                 'dark_gray' => '1;30',
@@ -62,6 +62,10 @@ class ORM
                 'light_gray' => '0;37',
                 'white' => '1;37',
             ];
+
+            if (is_array($msg)) {
+                $msg = json_encode($msg, JSON_PRETTY_PRINT);
+            }
 
             if (isset($colors[$color])) {
                 $msg = "\033[" . $colors[$color] . "m" . $msg . "\033[0m";
@@ -162,12 +166,13 @@ class ORM
      * Execute a query
      */
     public function exec(string $query, array $params = [])
-    {
-        $this->debug_info($query, 'green');
+    {   
+        $sql = Raw::build($query, $params);
+        $this->debug_info($sql, 'green');
         $pdo = $this->pdo();
-        $stmt = $pdo->prepare($query);
-        $stmt->execute($params);
-        return new Query($query, $pdo, $stmt);
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute();
+        return new Query($sql, $pdo, $stmt);
     }
 
     /**

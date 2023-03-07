@@ -172,19 +172,63 @@ trait Management
             $fields[] = static::raw('PRIMARY KEY (`' . $this->primary_key . '`)');
         }
 
+        $missing_index_cols = [];
         foreach ($this->indexes as $key => $index) {
             $type = strtoupper($index['type']);
 
             $cols = [];
             foreach ($index['columns'] as $col) {
+                if (!isset($this->fields[$col])) {
+                    $missing_index_cols[$key][] = $col;
+                    continue;
+                }
+
                 $cols[] = "`{$col}`";
             }
             $cols_sql = implode(', ', $cols);
             $fields[] = static::raw("{$type} KEY `{$key}` ({$cols_sql})");
         }
 
+        if (count($missing_index_cols) > 0) {
+            $missing_index_cols_msg =[];
+            foreach ($missing_index_cols as $key => $cols) {
+                foreach ($cols as $i => $col) {
+                    $cols[$i] = "`{$col}`";
+                }
+                $missing_index_cols_msg[] = "`{$key}` (" . implode(', ', $cols) . ")";
+            }
+            throw new Exception('Missing columns for indexes: ' . implode(', ', $missing_index_cols_msg));
+        }
+
         $fields = implode(', ', $fields);
         return static::raw("CREATE TABLE IF NOT EXISTS {$this->table} ({$fields})");
+    }
+
+    /**
+     * Create Alter Table Query
+     * @param array $alter_table
+     * @return string SQL Query
+     */
+    public function sqlAlterQuery(array $alter_table): string
+    {
+        $fields = [];
+        foreach ($alter_table as $name => $field) {
+            $type = static::type($field['type'], @$field['length']);
+            $sql = static::raw("ADD COLUMN `{$name}` {$type}");
+
+            if (isset($field['default'])) {
+                $sql .= ' DEFAULT ' . $field['default'];
+            }
+
+            if (isset($field['null']) && $field['null'] === false) {
+                $sql .= ' NOT NULL';
+            }
+
+            $fields[] = $sql;
+        }
+
+        $fields = implode(', ', $fields);
+        return static::raw("ALTER TABLE {$this->table} {$fields}");
     }
 
     /**
@@ -206,134 +250,6 @@ trait Management
     }
 
     /**
-     * Analyze Describe Table Result and Create Alter Table Query
-     * @param array $result
-     * @return string SQL Query
-     */
-    public function sqlAlterQuery(array $result): string
-    {
-        $intended_fields = $this->fields;
-        $intended_indexes = $this->indexes;
-        $intended_primary_key = $this->primary_key;
-
-        $parse_result = [];
-
-        foreach ($result as $row) {
-            $parse_result[$row['Field']] = [
-                'field' => $row['Field'],
-                'null' => $row['Null'] === 'YES',
-                'default' => $row['Default'],
-                'extra' => $row['Extra'],
-            ];
-
-            if (preg_match('/^(\w+)\((\d+)\)$/', $row['Type'], $matches)) {
-                $parse_result[$row['Field']]['type'] = $matches[1];
-                $parse_result[$row['Field']]['length'] = $matches[2];
-            } else {
-                $parse_result[$row['Field']]['length'] = static::type($row['Type'], null, true)['length'];
-            }
-
-            if ($row['Key'] === 'PRI') {
-                $parse_result[$row['Field']]['primary_key'] = true;
-            }
-
-            if ($row['Key'] === 'MUL') {
-                $parse_result[$row['Field']]['index'] = true;
-            }
-
-            if ($row['Key'] === 'UNI') {
-                $parse_result[$row['Field']]['unique'] = true;
-            }
-
-            if ($row['Extra'] === 'auto_increment') {
-                $parse_result[$row['Field']]['auto_increment'] = true;
-            }
-        }
-
-        $alter_fields = [];
-        $alter_indexes = [];
-        $alter_primary_key = null;
-
-        foreach ($intended_fields as $name => $field) {
-            $type = static::type($field['type'], $field['length']);
-            $sql = static::raw("`{$name}` {$type}");
-
-            if (isset($field['default'])) {
-                $sql .= ' DEFAULT ' . $field['default'];
-            }
-
-            if (isset($field['null']) && $field['null'] === false) {
-                $sql .= ' NOT NULL';
-            }
-
-            if ($intended_primary_key === $name) {
-                $sql .= ' AUTO_INCREMENT';
-            }
-
-            if (isset($parse_result[$name])) {
-                if ($parse_result[$name]['type'] !== $type) {
-                    $alter_fields[] = static::raw("CHANGE `{$name}` {$sql}");
-                }
-            } else {
-                $alter_fields[] = static::raw("ADD {$sql}");
-            }
-        }
-
-        foreach ($parse_result as $name => $field) {
-            if (!isset($intended_fields[$name])) {
-                $alter_fields[] = static::raw("DROP `{$name}`");
-            }
-        }
-
-        foreach ($intended_indexes as $index) {
-            $index_fields = array_map(function ($index) {
-                $field = strtoupper($index['field']);
-                return "`{$field}`";
-            }, $this->indexes);
-            $index_fields = implode(', ', $index_fields);
-            $sql = static::raw("{$index['type']} KEY `{$index['name']}` (`{$index_fields}`)");
-
-            if (isset($parse_result[$name])) {
-                if ($parse_result[$name]['type'] !== $type) {
-                    $alter_indexes[] = static::raw("CHANGE `{$name}` {$sql}");
-                }
-            } else {
-                $alter_indexes[] = static::raw("ADD {$sql}");
-            }
-        }
-
-        foreach ($parse_result as $name => $field) {
-            if (!isset($intended_fields[$name])) {
-                $alter_indexes[] = static::raw("DROP `{$name}`");
-            }
-        }
-
-        if ($intended_primary_key !== $parse_result[$name]['primary_key']) {
-            $alter_primary_key = $intended_primary_key;
-        }
-
-        $alter_fields = implode(', ', $alter_fields);
-        $alter_indexes = implode(', ', $alter_indexes);
-        $alter_primary_key = $alter_primary_key ? static::raw("ADD PRIMARY KEY (`{$alter_primary_key}`)") : null;
-
-        $alter = [];
-        if ($alter_fields) {
-            $alter[] = $alter_fields;
-        }
-
-        if ($alter_indexes) {
-            $alter[] = $alter_indexes;
-        }
-
-        if ($alter_primary_key) {
-            $alter[] = $alter_primary_key;
-        }
-
-        $alter = implode(', ', $alter);
-        return static::raw("ALTER TABLE {$this->table} {$alter}");
-    }
-
-    /**
      * Migrate Table
      * @return static
      */
@@ -348,7 +264,7 @@ trait Management
             $create = false;
         } catch (Exception $e) {
             $alter = false;
-            if ($e->getCode() === '42S02') {
+            if ($e->getCode() === State::NOTABLE) {
                 $create = true;
             } else {
                 new Exception($e->getMessage(), $e->getCode(), $e);
@@ -356,6 +272,7 @@ trait Management
         }
 
         if ($create) {
+            $this->orm()->debug_info(' --- creating database', 'yellow');
             $sql = $this->sqlCreateQuery();
             $this->orm()->exec($sql);
 
@@ -363,7 +280,7 @@ trait Management
                 $sql = $this->sqlDescribeQuery();
                 $this->orm()->exec($sql)->stmt->fetchAll();
             } catch (Exception $e) {
-                if ($e->getCode() === '42S02') {
+                if ($e->getCode() === State::NOTABLE) {
                     new Exception("Table {$this->table} was not created", 500, $e);
                 } else {
                     new Exception($e->getMessage(), $e->getCode(), $e);
@@ -372,7 +289,52 @@ trait Management
         }
 
         if ($alter && !empty($description_raw)) {
-            // TODO: Alter Table
+            $this->orm()->debug_info(' --- altering database', 'yellow');
+
+            $desciption = [];
+            $missing_fields = [];
+            foreach ($description_raw as $row) {
+                $field = $row['Field'];
+                $desciption[$field] = [
+                    'type' => $row['Type'],
+                    'null' => $row['Null'] === 'YES',
+                    'default' => $row['Default'] ?? 'NULL',
+                ];
+
+                if (!isset($this->fields[$field])) {
+                    $missing_fields[] = $field;
+                }
+            }
+
+            if (!empty($missing_fields)) {
+                $this->orm()->debug_info(' --- [WARNING] missing fields: ' . implode(', ', $missing_fields), 'red');
+            }
+
+            $alter_table = [];
+            foreach ($this->fields as $field => $info) {
+                if (!isset($desciption[$field])) {
+                    $alter_table[$field] = $info;
+                }
+            }
+
+            if (empty($alter_table)) {
+                $this->orm()->debug_info(' --- no changes', 'yellow');
+                return $this;
+            }
+
+            $sql = $this->sqlAlterQuery($alter_table);
+            $this->orm()->exec($sql);
+
+            try {
+                $sql = $this->sqlDescribeQuery();
+                $description_raw = $this->orm()->exec($sql)->stmt->fetchAll();
+            } catch (Exception $e) {
+                if ($e->getCode() === State::NOTABLE) {
+                    new Exception("Table {$this->table} was not created", 500, $e);
+                } else {
+                    new Exception($e->getMessage(), $e->getCode(), $e);
+                }
+            }
         }
 
         return $this;

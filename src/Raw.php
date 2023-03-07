@@ -47,4 +47,8 @@ class Raw
     {
         return $this->__toString();
     }
+    public static function build(string $sql, array $params = []): Raw
+    {
+        return new static($sql, $params);
+    }
 }
