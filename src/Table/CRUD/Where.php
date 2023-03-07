@@ -21,7 +21,7 @@ trait Where
     public function condition(array &$where, string $operator = "AND")
     {
         if (count($where) > 0) {
-            $where[] = $operator;
+            $where[] = static::raw($operator);
         }
 
         return $this;
@@ -34,7 +34,7 @@ trait Where
      */
     public function where(...$args)
     {
-        if (count($args) === 1 && $args[0] instanceof Raw) {
+        if (count($args) === 1 && ($args[0] instanceof Raw || is_string($args[0]))) {
             $this->condition($this->where, "AND");
             $this->where[] = $args[0];
         } else if (count($args) === 1 && is_array($args[0])) {
