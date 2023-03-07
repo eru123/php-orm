@@ -34,10 +34,13 @@ trait CRUD
         }
 
         $fillable = array_keys($this->fields);
+        $columns = [];
+        $defaults = [];
 
-        $columns = array_map(function ($value) {
-            return "`$value`";
-        }, $fillable);
+        foreach ($fillable as $column) {
+            $defaults[$column] = static::raw(isset($this->fields[$column]['default']) ? $this->fields[$column]['default'] : 'NULL');
+            $columns[] = "`$column`";
+        }
 
         $rows = [];
         foreach ($data as $row) {
@@ -49,7 +52,7 @@ trait CRUD
                 }
 
                 if (!isset($row[$column]) || is_null($row[$column])) {
-                    $values[] = 'NULL';
+                    $values[] = $defaults[$column];
                     continue;
                 }
 
