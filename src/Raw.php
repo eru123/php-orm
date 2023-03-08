@@ -2,6 +2,9 @@
 
 namespace eru123\orm;
 
+/**
+ * Pre-compiled SQL Query. Supports placeholders bindings and raw values.
+ */
 class Raw
 {
     protected $query = null;
