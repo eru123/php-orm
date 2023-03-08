@@ -37,4 +37,12 @@ trait Delete
         $where = $this->sqlWhereQuery();
         return static::raw("DELETE FROM `?` WHERE ?", [static::raw($this->table), $where]);
     }
+
+    /**
+     * Clear Delete
+     */
+    public function clearDelete()
+    {
+        $this->clearWhere();
+    }
 }

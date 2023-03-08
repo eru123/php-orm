@@ -86,7 +86,7 @@ trait Select
     /**
      * Find a row
      * @param  mixed ...$args Column names
-     * @return array|null
+     * @return Row
      */
     public function find(...$args)
     {
@@ -102,13 +102,14 @@ trait Select
         $this->limit = null;
         $this->offset = null;
 
-        return $query->stmt->fetch() ?: null;
+        $result = $query->stmt->fetch() ?: [];
+        return new Row($this, $result);
     }
 
     /**
      * Get multiple rows
      * @param  mixed ...$args Column names
-     * @return array
+     * @return Rows
      */
     public function get(...$args)
     {
@@ -124,6 +125,34 @@ trait Select
         $this->limit = null;
         $this->offset = null;
 
-        return $query->stmt->fetchAll() ?: [];
+        $result = $query->stmt->fetchAll() ?: [];
+        return new Rows($this, $result);
+    }
+
+    /**
+     * Clear the select
+     */
+    protected function clearSelect()
+    {
+        $this->select = [];
+    }
+
+    /**
+     * Clear the find
+     */
+    protected function clearFind()
+    {
+        $this->clearSelect();
+        $this->clearWhere();
+    }
+
+    /**
+     * Clear the get
+     */
+    protected function clearGet()
+    {
+        $this->clearSelect();
+        $this->clearWhere();
+        $this->clearLimit();
     }
 }

@@ -155,7 +155,7 @@ trait Where
 
     /**
      * Get where SQL Query
-     * @return  string
+     * @return Raw
      */
     public function sqlWhereQuery()
     {
@@ -164,5 +164,13 @@ trait Where
         }
 
         return static::raw(implode(" ", array_fill(0, count($this->where), "?")), $this->where);
+    }
+
+    /**
+     * Clear where array
+     */
+    public function clearWhere()
+    {
+        $this->where = [];
     }
 }

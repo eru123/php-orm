@@ -59,4 +59,13 @@ trait Limit
 
         return $limit;
     }
+
+    /**
+     * Clear the limit
+     */
+    protected function clearLimit()
+    {
+        $this->limit = null;
+        $this->offset = null;
+    }
 }

@@ -41,4 +41,12 @@ trait Update
         return static::raw("UPDATE `?` SET ? WHERE ?", [static::raw($this->table), $set, $where]);
     }
 
+    /**
+     * Clear Update
+     */
+    public function clearUpdate()
+    {
+        $this->clearSet();
+        $this->clearWhere();
+    }
 }

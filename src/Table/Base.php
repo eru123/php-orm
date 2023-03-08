@@ -46,4 +46,28 @@ trait Base
     {
         return $this->orm;
     }
+
+    /**
+     * Get primary key field name
+     */
+    public function primary_key(): ?string
+    {
+        return $this->primary_key;
+    }
+
+    /**
+     * Get table name
+     */
+    public function table(): string
+    {
+        return $this->table;
+    }
+
+    /**
+     * Get all fields
+     */
+    public function fields(): array
+    {
+        return array_keys($this->fields);
+    }
 }

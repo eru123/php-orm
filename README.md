@@ -14,7 +14,10 @@ Simple yet Powerful ORM for PHP
  - Provides RAW SQL query builder
  - Can connect to multiple databases
  - Can switch database connection at runtime
- - No dependencies
+ - Declarative schema definition
+ - Supports both Global and Object Scopes
+ - Smart PDO Instance Initialization
+ - No external dependencies
  - No configuration
  - No relationships
 

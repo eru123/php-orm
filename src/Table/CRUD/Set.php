@@ -46,4 +46,11 @@ trait Set {
         return static::raw(implode(', ', $set));
     }
 
+    /**
+     * Clear the set
+     */
+    protected function clearSet()
+    {
+        $this->set = [];
+    }
 }
