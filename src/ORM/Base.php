@@ -37,10 +37,10 @@ trait Base
 
     /**
      * Use a PDO instance or create a new one
-     * @param mixed ...$args
+     * @param mixed ...$args PDO Instance or PDO Arguments
      * @return static
      */
-    public static function use (...$args)
+    public static function create(...$args)
     {
         if (count($args) < 1) {
             throw new Exception("No arguments passed to " . static::class . "::use()");

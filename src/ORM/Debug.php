@@ -7,18 +7,34 @@ trait Debug
     protected $debug = false;
     protected $debug_stack = [];
 
+    /**
+     * Enable or disable debug mode
+     * @param   bool  $debug  Enable or disable debug mode
+     * @return  static
+     */
     public function debug(bool $debug = true)
     {
         $this->debug = $debug;
         return $this;
     }
 
-    public function debug_stack(array $stack = [])
+    /**
+     * Get the debug stack array
+     * @return array The debug stack array
+     */
+    public function debug_stack()
     {
-        $this->debug_stack = $stack;
-        return $this;
+        return $this->debug_stack;
     }
 
+    /**
+     * Add a debug message to the debug stack.
+     * If in CLI mode and debug mode is on, the 
+     * message will be printed to the console.
+     * @param   string|array $msg    The message to print
+     * @param   string       $color  The color of the message
+     * @return  void
+     */
     public function debug_info($msg, $color = 'white')
     {
         if ($this->debug) {

@@ -18,6 +18,11 @@ trait Select
      */
     protected $select = [];
 
+    /**
+     * Select columns
+     * @param  mixed ...$args Column names
+     * @return static
+     */
     public function select(...$args)
     {
         foreach ($args as $arg) {
@@ -53,6 +58,10 @@ trait Select
         return static::raw(implode(", ", array_fill(0, count($select), "?")), $select);
     }
 
+    /**
+     * Get SELECT SQL Query String
+     * @return Raw
+     */
     public function sqlFindQuery()
     {
         $select = $this->sqlSelectQuery();
@@ -61,6 +70,10 @@ trait Select
         return static::raw("SELECT ? FROM `?` WHERE ? LIMIT 1", [$select, $table, $where]);
     }
 
+    /**
+     * Get SELECT SQL Query String
+     * @return Raw
+     */
     public function sqlGetQuery()
     {
         $select = $this->sqlSelectQuery();
@@ -70,6 +83,11 @@ trait Select
         return static::raw("SELECT ? FROM `?` WHERE ? ?", [$select, $table, $where, $limit]);
     }
 
+    /**
+     * Find a row
+     * @param  mixed ...$args Column names
+     * @return array|null
+     */
     public function find(...$args)
     {
         if (count($args) > 0) {
@@ -87,6 +105,11 @@ trait Select
         return $query->stmt->fetch() ?: null;
     }
 
+    /**
+     * Get multiple rows
+     * @param  mixed ...$args Column names
+     * @return array
+     */
     public function get(...$args)
     {
         if (count($args) > 0) {
