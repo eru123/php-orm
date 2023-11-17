@@ -471,7 +471,10 @@ class ORM
         $username = static::array_get(static::$pdo_opts, ['username', 'user', 'dbuser', 'db_user']);
         $password = static::array_get(static::$pdo_opts, ['password', 'pass', 'dbpass', 'db_pass']);
         $options = is_null($options) ? static::array_get(static::$pdo_opts, ['options', 'pdo_options', 'pdo_opts']) : $options;
-        $dsn = "{$driver}:host={$host};port={$port};dbname={$dbname};";
+        $dsn = "{$driver}:host={$host};port={$port};";
+        if ($dbname) {
+            $dsn .= "dbname={$dbname};";
+        }
         return new PDO($dsn, $username, $password, $options);
     }
 
