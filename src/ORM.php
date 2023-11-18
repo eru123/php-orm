@@ -524,12 +524,13 @@ class ORM
 
     public static function insert(string $table, array $data)
     {
+        $table = static::select_table($table);
         $cols = static::getTableColumns($table);
         $data = array_intersect_key($data, array_flip($cols));
 
         $keys = array_keys($data);
         $values = array_values($data);
-        $sql = "INSERT INTO `$table` (`" . implode('`, `', $keys) . "`) VALUES (" . implode(', ', array_fill(0, count($values), '?')) . ")";
+        $sql = "INSERT INTO $table (`" . implode('`, `', $keys) . "`) VALUES (" . implode(', ', array_fill(0, count($values), '?')) . ")";
         for ($i = 0; $i < count($values); $i++) {
             if (is_array($values[$i])) {
                 $values[$i] = count($values[$i]) ? json_encode($values[$i]) : null;
@@ -540,6 +541,7 @@ class ORM
 
     public static function insert_many(string $table, array $data)
     {
+        $table = static::select_table($table);
         $cols = static::getTableColumns($table);
         $keys = array_keys($data[0]);
         $values = [];
@@ -553,18 +555,36 @@ class ORM
             }
             $values = array_merge($values, $rowdata);
         }
-        $sql = "INSERT INTO `$table` (`" . implode('`, `', $keys) . "`) VALUES " . implode(', ', array_fill(0, count($data), '(' . implode(', ', array_fill(0, count($keys), '?')) . ')'));
+        $sql = "INSERT INTO $table (`" . implode('`, `', $keys) . "`) VALUES " . implode(', ', array_fill(0, count($data), '(' . implode(', ', array_fill(0, count($keys), '?')) . ')'));
         return static::raw($sql, $values);
     }
 
-    public static function update(string $table, array $data, self|string|array $where = '1')
+    public static function select_table(self|string $table): static
     {
+        if ($table instanceof self) {
+            return $table;
+        }
+
+        if (preg_match('/^([a-z0-9_]+)$/i', $table)) {
+            return static::raw("`{$table}`");
+        } else if (preg_match('/^([a-z0-9_]+)\.([a-z0-9_]+)$/i', $table, $matches)) {
+            return static::raw("`{$matches[1]}`.`{$matches[2]}`");
+        } else if (preg_match("/^([a-z0-9_]+)(\s+)?\((.+)\)$/i", $table, $matches)) {
+            return static::raw("{$matches[1]}({$matches[3]})");
+        }
+
+        return static::raw($table);
+    }
+
+    public static function update(self|string $table, array $data, self|string|array $where = '1')
+    {
+        $table = static::select_table($table);
         $cols = static::getTableColumns($table);
         $data = array_intersect_key($data, array_flip($cols));
         $keys = array_keys($data);
         $values = array_values($data);
         $where = static::where($where);
-        $sql = "UPDATE `$table` SET `" . implode('` = ?, `', $keys) . "` = ?" . ($where ? " WHERE $where" : '');
+        $sql = "UPDATE $table SET `" . implode('` = ?, `', $keys) . "` = ?" . ($where ? " WHERE $where" : '');
 
         for ($i = 0; $i < count($values); $i++) {
             if (is_array($values[$i])) {
@@ -577,8 +597,9 @@ class ORM
 
     public static function delete(string $table, self|string|array $where = '1')
     {
+        $table = static::select_table($table);
         $where = static::where($where);
-        $sql = "DELETE FROM `$table`" . ($where ? " WHERE $where" : '');
+        $sql = "DELETE FROM $table" . ($where ? " WHERE $where" : '');
         return static::raw($sql);
     }
 
