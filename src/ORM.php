@@ -467,7 +467,7 @@ class ORM
         $driver = static::array_get(static::$pdo_opts, ['driver', 'dbdriver', 'db_driver'], 'mysql');
         $host = static::array_get(static::$pdo_opts, ['host', 'dbhost', 'db_host'], 'localhost');
         $port = static::array_get(static::$pdo_opts, ['port', 'dbport', 'db_port'], 3306);
-        $dbname = static::array_get(static::$pdo_opts, ['dbname', 'db_name']);
+        $dbname = static::array_get(static::$pdo_opts, ['dbname', 'db_name', 'name', 'db']);
         $username = static::array_get(static::$pdo_opts, ['username', 'user', 'dbuser', 'db_user']);
         $password = static::array_get(static::$pdo_opts, ['password', 'pass', 'dbpass', 'db_pass']);
         $options = is_null($options) ? static::array_get(static::$pdo_opts, ['options', 'pdo_options', 'pdo_opts']) : $options;
@@ -668,19 +668,43 @@ class ORM
         static::$pdo = null;
     }
 
-    public static function tableColumns(string $table)
+    public static function extract_dbntable(string|self $table)
     {
-        $sql = "SELECT `COLUMN_NAME` FROM `information_schema`.`COLUMNS` WHERE TABLE_SCHEMA=? AND TABLE_NAME=? ORDER BY ORDINAL_POSITION";
-        return static::raw($sql, [venv('DB_NAME'), $table]);
+        $dbname = static::array_get(static::$pdo_opts, ['dbname', 'db_name', 'name', 'db']);
+        if (preg_match('/^`([a-z0-9_]+)`$/i', $table, $matches)) {
+            $table = $matches[1];
+        } else if (preg_match('/^`([a-z0-9_]+)`\.`([a-z0-9_]+)`$/i', $table, $matches)) {
+            $dbname = $matches[1];
+            $table = $matches[2];
+        } else if (preg_match('/^`([a-z0-9_]+)`\.`([a-z0-9_]+)`\s+as\s+`([a-z0-9_]+)`$/i', $table, $matches)) {
+            $dbname = $matches[1];
+            $table = $matches[2];
+        } else if (preg_match('/^([a-z0-9_]+)\.([a-z0-9_]+)$/i', $table, $matches)) {
+            $dbname = $matches[1];
+            $table = $matches[2];
+        } else if (preg_match('/^([a-z0-9_]+)\.([a-z0-9_]+)\s+as\s+([a-z0-9_]+)$/i', $table, $matches)) {
+            $dbname = $matches[1];
+            $table = $matches[2];
+        }
+
+        return [$dbname, $table];
     }
 
-    public static function getTableColumns(string $table)
+    public static function tableColumns(string|self $table)
     {
+        [$dbname, $table] = static::extract_dbntable($table);
+        $sql = "SELECT `COLUMN_NAME` FROM `information_schema`.`COLUMNS` WHERE TABLE_SCHEMA=? AND TABLE_NAME=? ORDER BY ORDINAL_POSITION";
+        return static::raw($sql, [$dbname, $table]);
+    }
+
+    public static function getTableColumns(string|self $table)
+    {
+        [$dbname, $table] = static::extract_dbntable($table);
         if (isset(static::$columns[$table])) {
             return static::$columns[$table];
         }
         $sql = "SELECT `COLUMN_NAME` FROM `information_schema`.`COLUMNS` WHERE TABLE_SCHEMA=? AND TABLE_NAME=? ORDER BY ORDINAL_POSITION";
-        $stmt = static::raw($sql, [venv('DB_NAME'), $table])->exec();
+        $stmt = static::raw($sql, [$dbname, $table])->exec();
         static::$columns[$table] = $stmt->fetchAll(PDO::FETCH_COLUMN);
         return static::$columns[$table];
     }
