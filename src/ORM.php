@@ -239,7 +239,7 @@ class ORM
             $sql .= " AS `{$alias}`";
         }
         return new static($sql);
-        
+
     }
 
     public static function select(string|array|self $table, array $query)
@@ -585,7 +585,9 @@ class ORM
         $keys = array_keys($data);
         $values = array_values($data);
         $where = static::where($where);
-        $sql = "UPDATE $table SET `" . implode('` = ?, `', $keys) . "` = ?" . ($where ? " WHERE $where" : '');
+        $set = implode(',', array_map(fn($key) => "`{$key}` = ?", $keys));
+
+        $sql = "UPDATE $table SET $set" . ($where ? " WHERE $where" : '');
 
         for ($i = 0; $i < count($values); $i++) {
             if (is_array($values[$i])) {
@@ -703,7 +705,7 @@ class ORM
         if (is_null($table)) {
             return static::$columns;
         }
-        
+
         [$dbname, $table] = static::extract_dbntable($table);
         if (isset(static::$columns[$table])) {
             return static::$columns[$table];
