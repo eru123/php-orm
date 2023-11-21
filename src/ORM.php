@@ -232,18 +232,19 @@ class ORM
         return new static("({$sql})");
     }
 
-    public static function table(string $name, string $alias = null): static
+    public static function table(string|self $name, string $alias = null): static
     {
-        $sql = "`{$name}`";
+        $sql = static::select_table($name);
         if ($alias) {
             $sql .= " AS `{$alias}`";
         }
         return new static($sql);
+        
     }
 
-    public static function select(string|array $table, array $query)
+    public static function select(string|array|self $table, array $query)
     {
-        $table = is_array($table) ? static::table(...$table) : static::table($table);
+        $table = is_array($table) ? static::table(...$table) : ($table instanceof static ? $table : static::table($table));
         $cols = static::array_get($query, ['columns', 'column', 'col', 'cols', 'select'], '*');
         if (is_array($cols)) {
             $cols = static::columns($cols);
