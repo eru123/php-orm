@@ -698,8 +698,12 @@ class ORM
         return static::raw($sql, [$dbname, $table]);
     }
 
-    public static function getTableColumns(string|self $table)
+    public static function getTableColumns(string|self|null $table = null)
     {
+        if (is_null($table)) {
+            return static::$columns;
+        }
+        
         [$dbname, $table] = static::extract_dbntable($table);
         if (isset(static::$columns[$table])) {
             return static::$columns[$table];
