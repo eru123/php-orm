@@ -499,13 +499,15 @@ class ORM
         return $this->error;
     }
 
-    public function exec(): false|PDOStatement
+    public function exec($history = true): false|PDOStatement
     {
         if ($this->executed) {
             return $this->stmt;
         }
 
-        static::$history[] = $this->query;
+        if ($history) {
+            static::$history[] = $this->query;
+        }
 
         static::pdo();
         if ($this->error) {
